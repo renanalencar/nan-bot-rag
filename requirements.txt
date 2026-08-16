@@ -1,0 +1,18 @@
+# Extração de PDF
+pymupdf
+
+# Embeddings locais (custo zero, roda em CPU)
+sentence-transformers
+
+# Vector store local
+chromadb
+
+# LLM provider padrão (ver src/llm_provider.py)
+anthropic
+
+# Utilidades
+python-dotenv
+
+# Notebook (formato principal da demo)
+jupyter
+ipykernel

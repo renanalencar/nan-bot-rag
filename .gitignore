@@ -1,0 +1,30 @@
+# Corpus (PDFs de cada aluno — não versionar; a pasta em si fica rastreada via docs/.gitkeep)
+docs/*
+!docs/.gitkeep
+
+# Segredos
+.env
+
+# Ambiente virtual
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Dados gerados (grandes, regeneráveis via pipeline de ingestão)
+data/chunks/
+data/vectorstore/
+
+# Modelos baixados localmente (sentence-transformers cache, se ficar no projeto)
+.cache/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Editor/OS
+.vscode/
+.idea/
+Thumbs.db
