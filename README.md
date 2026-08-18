@@ -15,7 +15,7 @@ Projeto pensado para a turma estudar e estender — a extração de PDF e o prov
 
 ## Pipeline
 
-Quatro fases, cada uma consumindo o resultado da anterior:
+O pipeline possui quatro fases base e uma interface de API, onde cada fase consome o resultado da anterior:
 
 ```
 docs/*.pdf
@@ -27,7 +27,7 @@ data/chunks/chunks.json      (texto em pedaços, com metadata de fonte/página)
 data/vectorstore/            (Chroma, embeddings persistidos em disco)
    │  src/retrieve.py  ──►  top-k chunks mais parecidos com a pergunta
    ▼
-src/generate.py  ──►  prompt (pergunta + chunks) ──►  LLM ──►  resposta citada
+src/generate.py ou src/main.py ──► prompt (pergunta + chunks) ──► LLM ──► resposta citada
 ```
 
 | Fase | Arquivo | Entrada | Saída |
@@ -35,7 +35,8 @@ src/generate.py  ──►  prompt (pergunta + chunks) ──►  LLM ──► 
 | 1. Ingestão | `src/ingest.py` | PDFs em `docs/` | `data/chunks/chunks.json` |
 | 2. Embedding | `src/embed.py` | `chunks.json` | `data/vectorstore/` (Chroma) |
 | 3. Retrieval | `src/retrieve.py` | pergunta (texto) | top-k chunks relevantes |
-| 4. Geração | `src/generate.py` | pergunta + chunks | resposta com citação |
+| 4. Geração (Terminal)| `src/generate.py` | pergunta + chunks | resposta no terminal |
+| 5. Atendimento (API) | `src/main.py` | webhooks de chat | resposta enviada ao usuário |
 
 ## Estrutura do projeto
 
@@ -49,8 +50,9 @@ poc_rag_sistemas_com_ia/
 │   ├── ingest.py                     # Fase 1 — PDF -> chunks
 │   ├── embed.py                      # Fase 2 — chunks -> vector store
 │   ├── retrieve.py                   # Fase 3 — pergunta -> top-k chunks
-│   ├── generate.py                   # Fase 4 — pergunta + chunks -> resposta
-│   ├── llm_provider.py               # abstração de provider de LLM (ver abaixo)
+│   ├── generate.py                   # Fase 4 — pergunta + chunks -> resposta (Terminal)
+│   ├── main.py                       # Fase 5 — Webhooks FastAPI (WhatsApp, Telegram, Slack)
+│   ├── llm_provider.py               # abstração de provider de LLM (Anthropic, Gemini, OpenAI)
 │   └── generate_citations_anthropic.py  # bônus opcional, só Anthropic
 ├── requirements.txt
 ├── .env.example                      # copie para .env e preencha
@@ -71,7 +73,7 @@ pip install -r requirements.txt
 
 :: configurar variáveis de ambiente
 copy .env.example .env
-:: edite .env e preencha ANTHROPIC_API_KEY
+:: edite .env e preencha as variáveis da sua LLM e dos bots (Telegram, WhatsApp, Slack)
 ```
 
 Coloque um ou mais PDFs em `docs/` (pode criar subpastas à vontade — o `ingest.py` procura recursivamente).
@@ -80,11 +82,26 @@ Coloque um ou mais PDFs em `docs/` (pode criar subpastas à vontade — o `inges
 
 Com a venv ativada e pelo menos um PDF em `docs/`:
 
+### Processamento do Corpus (Indexação)
 ```bat
 python src/ingest.py
 python src/embed.py
+```
+
+### Teste Rápido via Terminal
+```bat
 python src/generate.py "sua pergunta sobre o conteúdo dos PDFs"
 ```
+
+### Atendimento Automático via Webhooks (FastAPI)
+O projeto contém uma API em FastAPI pronta para plugar em serviços de mensageria.
+```bat
+uvicorn src.main:app --reload
+```
+Isso levantará o servidor em `http://127.0.0.1:8000` expondo as rotas:
+- `/webhook` para o WhatsApp Cloud API
+- `/telegram-webhook` para o Telegram (botfather)
+- `/slack-webhook` para a Event API do Slack
 
 - `ingest.py` e `embed.py` só precisam ser reexecutados quando `docs/` mudar.
 - `retrieve.py` pode ser testado isoladamente (sem chamar LLM nenhum):
@@ -129,7 +146,7 @@ Padrão comum para embeddings de sentence-transformers normalizados (`normalize_
 
 ### `LLMProvider`: abstração sobre o provider de LLM
 
-`generate.py` não importa `anthropic` diretamente — ele chama `get_provider().generate(prompt)`, definido em `llm_provider.py`. Motivo: o resto do pipeline (ingest/embed/retrieve) é 100% local, sem depender de nenhum serviço externo; só a geração da resposta final precisa de um LLM, e não faz sentido travar essa única etapa num fornecedor específico. Ver [Como estender](#implementar-um-novo-provider-de-llm) para adicionar o seu.
+`generate.py` e `main.py` não importam bibliotecas de IA diretamente na lógica de negócio — eles chamam `get_provider().generate(prompt)`, definido em `llm_provider.py`. Motivo: o resto do pipeline (ingest/embed/retrieve) é 100% local; só a geração da resposta precisa de um LLM. O projeto já suporta **Anthropic**, **OpenAI** e **Gemini** nativamente. Ver [Como estender](#implementar-um-novo-provider-de-llm) para adicionar o seu.
 
 ### Citations API isolada em `generate_citations_anthropic.py`
 
