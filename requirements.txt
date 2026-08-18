@@ -9,6 +9,7 @@ chromadb
 
 # LLM provider padrão (ver src/llm_provider.py)
 anthropic
+google-generativeai
 
 # Utilidades
 python-dotenv
@@ -16,3 +17,10 @@ python-dotenv
 # Notebook (formato principal da demo)
 jupyter
 ipykernel
+
+fastapi
+uvicorn
+requests
+langchain
+langchain-community
+langchain-openai

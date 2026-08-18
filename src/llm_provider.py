@@ -77,10 +77,107 @@ class AnthropicProvider(LLMProvider):
         raise RuntimeError("Failed to call the model after multiple retries")
 
 
+class GeminiProvider(LLMProvider):
+    """Provider usando a API do Gemini via Google AI Studio.
+
+    Requer GEMINI_API_KEY em .env.
+    """
+
+    MODEL = "gemini-3.6-flash"
+    MAX_RETRIES = 3
+    RETRY_DELAY_SECONDS = 5
+
+    def __init__(self):
+        try:
+            import google.generativeai as genai
+        except ImportError:
+            raise RuntimeError("Pacote google-generativeai não encontrado. Instale com: pip install google-generativeai")
+            
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if not api_key:
+            raise RuntimeError("GEMINI_API_KEY não encontrada. Copie .env.example para .env e preencha a chave.")
+        genai.configure(api_key=api_key)
+        self._model = genai.GenerativeModel(self.MODEL)
+
+    def generate(self, prompt: str) -> str:
+        response = self._call_with_retry(lambda: self._model.generate_content(prompt))
+        return response.text
+
+    def _call_with_retry(self, request_fn):
+        """Roda request_fn() com retry em erros transitórios."""
+        import google.api_core.exceptions as google_exceptions
+        
+        for attempt in range(1, self.MAX_RETRIES + 1):
+            try:
+                return request_fn()
+            except google_exceptions.GoogleAPIError as e:
+                retryable = isinstance(e, (
+                    google_exceptions.TooManyRequests,
+                    google_exceptions.InternalServerError,
+                    google_exceptions.ServiceUnavailable,
+                    google_exceptions.RetryError
+                ))
+                if retryable and attempt < self.MAX_RETRIES:
+                    print(f"  Erro {e.__class__.__name__} do Gemini, retrying in {self.RETRY_DELAY_SECONDS}s... ({attempt}/{self.MAX_RETRIES})")
+                    time.sleep(self.RETRY_DELAY_SECONDS)
+                    continue
+                raise
+        raise RuntimeError("Failed to call the model after multiple retries")
+
+
+class OpenAIProvider(LLMProvider):
+    """Provider usando a API da OpenAI.
+
+    Requer OPENAI_API_KEY em .env.
+    """
+
+    MODEL = "gpt-4o-mini"
+    MAX_TOKENS = 2048
+    MAX_RETRIES = 3
+    RETRY_DELAY_SECONDS = 5
+
+    def __init__(self):
+        try:
+            import openai
+        except ImportError:
+            raise RuntimeError("Pacote openai não encontrado. Instale com: pip install openai")
+            
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            raise RuntimeError("OPENAI_API_KEY não encontrada. Copie .env.example para .env e preencha a chave.")
+        self._client = openai.OpenAI(api_key=api_key)
+
+    def generate(self, prompt: str) -> str:
+        response = self._call_with_retry(lambda: self._client.chat.completions.create(
+            model=self.MODEL,
+            max_tokens=self.MAX_TOKENS,
+            messages=[{"role": "user", "content": prompt}],
+        ))
+        return response.choices[0].message.content
+
+    def _call_with_retry(self, request_fn):
+        """Roda request_fn() com retry em erros transitórios."""
+        import openai
+        
+        for attempt in range(1, self.MAX_RETRIES + 1):
+            try:
+                return request_fn()
+            except (openai.RateLimitError, openai.APIStatusError) as e:
+                retryable = isinstance(e, openai.RateLimitError) or getattr(e, 'status_code', 200) >= 500
+                if retryable and attempt < self.MAX_RETRIES:
+                    print(f"  Erro {getattr(e, 'status_code', 429)} da OpenAI, retrying in {self.RETRY_DELAY_SECONDS}s... ({attempt}/{self.MAX_RETRIES})")
+                    time.sleep(self.RETRY_DELAY_SECONDS)
+                    continue
+                raise
+        raise RuntimeError("Failed to call the model after multiple retries")
+
+
 # Nome usado em LLM_PROVIDER -> classe do provider.
 # Adicione sua classe aqui depois de implementá-la.
 PROVIDERS: dict[str, type[LLMProvider]] = {
     "anthropic": AnthropicProvider,
+    "gemini": GeminiProvider,
+    "openai": OpenAIProvider,
 }
 
 
