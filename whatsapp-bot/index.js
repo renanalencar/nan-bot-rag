@@ -13,6 +13,23 @@ const puppeteerOptions = {
     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium'
 };
 
+// Cleanup Chromium lock files before starting to prevent "profile in use" error
+const sessionDir = path.join(__dirname, '.wwebjs_auth', 'session');
+if (fs.existsSync(sessionDir)) {
+    const lockFiles = ['SingletonLock', 'SingletonCookie', 'SingletonSocket'];
+    for (const file of lockFiles) {
+        const lockPath = path.join(sessionDir, file);
+        try {
+            if (fs.existsSync(lockPath)) {
+                fs.unlinkSync(lockPath);
+                console.log(`[INIT] Removed stale lock file: ${lockPath}`);
+            }
+        } catch (e) {
+            console.error(`[INIT] Failed to remove lock file ${lockPath}:`, e.message);
+        }
+    }
+}
+
 // Configure the client with LocalAuth to save session state so you don't have to scan QR every time
 const client = new Client({
     authStrategy: new LocalAuth(),
