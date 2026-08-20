@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile.api
     container_name: poc_rag_api
-    restart: unless-stopped
+    restart: always
     ports:
       - "8000:8000"
     volumes:
@@ -22,7 +22,7 @@ services:
       context: ./whatsapp-bot
       dockerfile: Dockerfile.bot
     container_name: poc_rag_bot
-    restart: unless-stopped
+    restart: always
     depends_on:
       - api
     environment:
