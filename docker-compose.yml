@@ -9,7 +9,7 @@ services:
     container_name: nan_rag_api
     restart: always
     ports:
-      - "8000:8000"
+      - "8800:8000"
     volumes:
       - /DATA/AppData/nanbot/data:/app/data
       - /DATA/AppData/nanbot/docs:/app/docs
