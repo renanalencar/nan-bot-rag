@@ -36,7 +36,8 @@ def _get_collection():
     global _collection
     if _collection is None:
         client = chromadb.PersistentClient(path=str(VECTORSTORE_DIR))
-        _collection = client.get_collection(COLLECTION_NAME)
+        # get_or_create_collection ensures it won't crash even if the vectorstore is empty
+        _collection = client.get_or_create_collection(COLLECTION_NAME)
     return _collection
 
 
