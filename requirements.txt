@@ -9,7 +9,7 @@ chromadb
 
 # LLM provider padrão (ver src/llm_provider.py)
 anthropic
-google-generativeai
+google-genai
 
 # Utilidades
 python-dotenv

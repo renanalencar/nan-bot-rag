@@ -36,13 +36,13 @@ src/generate.py ou src/main.py ──► prompt (pergunta + chunks) ──► LL
 | 2. Embedding | `src/embed.py` | `chunks.json` | `data/vectorstore/` (Chroma) |
 | 3. Retrieval | `src/retrieve.py` | pergunta (texto) | top-k chunks relevantes |
 | 4. Geração (Terminal)| `src/generate.py` | pergunta + chunks | resposta no terminal |
-| 5. Atendimento (API) | `src/main.py` | webhooks de chat | resposta enviada ao usuário |
+| 5. Atendimento | `whatsapp-bot/` + `src/unofficial_main.py` | WhatsApp (Grupos/PV) | RAG + Handoff Humano |
 
 ## Estrutura do projeto
 
 ```
 poc_rag_sistemas_com_ia/
-├── docs/                             # PDFs do corpus (você adiciona os seus aqui)
+├── docs/                             # PDFs do corpus (bot baixa documentos direto pra cá)
 ├── data/
 │   ├── chunks/                       # cache de texto extraído + chunks.json
 │   └── vectorstore/                  # Chroma persistido (gerado por embed.py)
@@ -51,57 +51,54 @@ poc_rag_sistemas_com_ia/
 │   ├── embed.py                      # Fase 2 — chunks -> vector store
 │   ├── retrieve.py                   # Fase 3 — pergunta -> top-k chunks
 │   ├── generate.py                   # Fase 4 — pergunta + chunks -> resposta (Terminal)
-│   ├── main.py                       # Fase 5 — Webhooks FastAPI (WhatsApp, Telegram, Slack)
-│   ├── llm_provider.py               # abstração de provider de LLM (Anthropic, Gemini, OpenAI)
-│   └── generate_citations_anthropic.py  # bônus opcional, só Anthropic
+│   ├── unofficial_main.py            # Fase 5 — FastAPI Backend para o Bot
+│   ├── main.py                       # (Legado) Webhooks oficiais
+│   ├── llm_provider.py               # abstração de provider de LLM
+│   └── generate_citations_anthropic.py
+├── whatsapp-bot/
+│   ├── index.js                      # Bot Node.js (whatsapp-web.js)
+│   ├── Dockerfile.bot                # Dockerfile do Bot
+│   └── package.json
+├── docker-compose.yaml               # Orquestração (Podman/Docker)
+├── Dockerfile.api                    # Dockerfile da API Python
 ├── requirements.txt
 ├── .env.example                      # copie para .env e preencha
 └── README.md
 ```
 
-## Setup
+## Setup e Como Rodar (Docker / Podman)
 
-Pré-requisito: Python 3.11+.
+O projeto foi containerizado para facilitar o deploy em servidores ou homelabs (suporta Docker e Podman nativamente).
 
-```bat
-:: criar e ativar o ambiente virtual (Windows, cmd.exe)
-python -m venv .venv
-.venv\Scripts\activate.bat
+1. **Configuração de Variáveis:**
+   ```bash
+   cp .env.example .env
+   # Edite o .env e adicione suas chaves de API (OpenAI, Gemini, etc.)
+   ```
 
-:: instalar dependências
-pip install -r requirements.txt
+2. **Subir os Containers:**
+   O `docker-compose.yaml` já configura o backend Python e o bot Node.js para conversarem entre si.
+   ```bash
+   # Com Docker
+   docker-compose up -d --build
+   
+   # Com Podman
+   podman-compose up -d --build
+   ```
 
-:: configurar variáveis de ambiente
-copy .env.example .env
-:: edite .env e preencha as variáveis da sua LLM e dos bots (Telegram, WhatsApp, Slack)
-```
-
-Coloque um ou mais PDFs em `docs/` (pode criar subpastas à vontade — o `ingest.py` procura recursivamente).
-
-## Como rodar
-
-Com a venv ativada e pelo menos um PDF em `docs/`:
+3. **Autenticação do WhatsApp (Apenas primeira vez):**
+   Acesse os logs do bot para escanear o QR Code gerado no terminal:
+   ```bash
+   docker logs poc_rag_bot -f
+   ```
+   *A sessão será salva no volume mapeado e não será solicitada novamente nos próximos reboots.*
 
 ### Processamento do Corpus (Indexação)
-```bat
-python src/ingest.py
-python src/embed.py
+Com os containers rodando, para indexar PDFs que estão na pasta `docs/`, execute os scripts de indexação diretamente dentro do container da API:
+```bash
+docker exec -it poc_rag_api python src/ingest.py
+docker exec -it poc_rag_api python src/embed.py
 ```
-
-### Teste Rápido via Terminal
-```bat
-python src/generate.py "sua pergunta sobre o conteúdo dos PDFs"
-```
-
-### Atendimento Automático via Webhooks (FastAPI)
-O projeto contém uma API em FastAPI pronta para plugar em serviços de mensageria.
-```bat
-uvicorn src.main:app --reload
-```
-Isso levantará o servidor em `http://127.0.0.1:8000` expondo as rotas:
-- `/webhook` para o WhatsApp Cloud API
-- `/telegram-webhook` para o Telegram (botfather)
-- `/slack-webhook` para a Event API do Slack
 
 - `ingest.py` e `embed.py` só precisam ser reexecutados quando `docs/` mudar.
 - `retrieve.py` pode ser testado isoladamente (sem chamar LLM nenhum):
@@ -186,3 +183,55 @@ PROVIDERS = {
 ### Ajustar as perguntas de sanidade
 
 `embed.py` tem uma lista `SANITY_QUERIES` (vazia por padrão) rodada ao final da indexação, só para checar visualmente se o retrieval está trazendo passagens plausíveis antes de conectar o LLM. Preencha com 2-3 perguntas relevantes ao seu corpus.
+
+# PROCESSO DE INTRODUÇÃO DE NOVOS DOCUMENTOS - ROTEIRO RÁPIDO
+
+O processo foi desenhado para ser o mais simples possível, minimizando passos manuais.
+
+**Diretório de entrada:** Coloque os novos PDFs em `docs/` (pode usar subpastas, ex.: `docs/manuais/novo-manual.pdf`).
+
+**Comando único de processamento:**
+Execute o pipeline completo:
+
+```bash
+bash scripts/process-new-pdfs.sh
+```
+
+Este script:
+1. Copia PDFs de `docs/` para `content_source/`;
+2. Executa `ingest.py` para extrair texto e criar chunks;
+3. Executa `embed.py` para gerar embeddings e atualizar o banco de dados Chroma;
+4. Recarrega o servidor FastAPI automáticamente (se estiver rodando).
+
+Se preferir rodar os passos individualmente:
+```bash
+python src/ingest.py
+python src/embed.py
+```
+
+**Validação opcional:**
+Após o processamento, pode validar com uma pergunta executando dentro do container:
+```bash
+docker exec -it poc_rag_api python src/generate.py "sua pergunta"
+```
+
+---
+
+## Recursos Avançados do Bot
+
+O `whatsapp-bot` foi construído com a biblioteca `whatsapp-web.js` para contornar as limitações da API oficial da Meta, adicionando recursos essenciais:
+
+### 1. Suporte a Grupos
+O bot lê e responde mensagens tanto no privado quanto em grupos do WhatsApp, o que a API oficial do WhatsApp Business geralmente bloqueia.
+
+### 2. Transbordo para Humano (Human Handoff)
+- Se a inteligência artificial não encontrar a resposta nos documentos, ela emite a instrução secreta `HANDOFF`.
+- O bot Node.js avisa o usuário que ele será transferido para Renan e **pausa** as respostas automáticas para aquele chat.
+- O atendente (humano) pode assumir a conversa normalmente pelo WhatsApp do celular.
+- **Reativação manual:** Envie `!nan` no chat afetado para o bot voltar a responder de forma autônoma.
+- **Reativação automática:** Após 15 minutos de inatividade no chat, o bot encerra a pausa automaticamente e avisa ao usuário.
+
+### 3. Auto-Download de Arquivos (Ingestão)
+- Se o bot receber arquivos (PDF, DOCX, XLSX, TXT, MD) diretamente via WhatsApp, ele fará o download e o salvará no volume compartilhado `docs/`.
+- O usuário é notificado via WhatsApp do sucesso do download. 
+- *Obs: Posteriormente, basta rodar o comando `ingest.py` (via docker exec) para que o arquivo passe a fazer parte da inteligência artificial.*

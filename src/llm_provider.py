@@ -89,36 +89,34 @@ class GeminiProvider(LLMProvider):
 
     def __init__(self):
         try:
-            import google.generativeai as genai
+            from google import genai
         except ImportError:
-            raise RuntimeError("Pacote google-generativeai não encontrado. Instale com: pip install google-generativeai")
+            raise RuntimeError("Pacote google-genai não encontrado. Instale com: pip install google-genai")
             
         api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
             raise RuntimeError("GEMINI_API_KEY não encontrada. Copie .env.example para .env e preencha a chave.")
-        genai.configure(api_key=api_key)
-        self._model = genai.GenerativeModel(self.MODEL)
+        self._client = genai.Client(api_key=api_key)
 
     def generate(self, prompt: str) -> str:
-        response = self._call_with_retry(lambda: self._model.generate_content(prompt))
+        response = self._call_with_retry(lambda: self._client.models.generate_content(
+            model=self.MODEL,
+            contents=prompt,
+        ))
         return response.text
 
     def _call_with_retry(self, request_fn):
         """Roda request_fn() com retry em erros transitórios."""
-        import google.api_core.exceptions as google_exceptions
+        from google.genai import errors
         
         for attempt in range(1, self.MAX_RETRIES + 1):
             try:
                 return request_fn()
-            except google_exceptions.GoogleAPIError as e:
-                retryable = isinstance(e, (
-                    google_exceptions.TooManyRequests,
-                    google_exceptions.InternalServerError,
-                    google_exceptions.ServiceUnavailable,
-                    google_exceptions.RetryError
-                ))
+            except errors.APIError as e:
+                # Retry em erros transitórios (429 e 5xx)
+                retryable = getattr(e, 'code', 500) == 429 or getattr(e, 'code', 500) >= 500
                 if retryable and attempt < self.MAX_RETRIES:
-                    print(f"  Erro {e.__class__.__name__} do Gemini, retrying in {self.RETRY_DELAY_SECONDS}s... ({attempt}/{self.MAX_RETRIES})")
+                    print(f"  Erro {getattr(e, 'code', 'desconhecido')} do Gemini, retrying in {self.RETRY_DELAY_SECONDS}s... ({attempt}/{self.MAX_RETRIES})")
                     time.sleep(self.RETRY_DELAY_SECONDS)
                     continue
                 raise

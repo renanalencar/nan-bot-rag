@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: poc_rag_api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - /DATA/AppData/nanbot/data:/app/data
+      - /DATA/AppData/nanbot/docs:/app/docs
+      - /DATA/AppData/nanbot/.env:/app/.env
+    environment:
+      - TZ=America/Recife
+      - PYTHONPATH=/app
+
+  bot:
+    build:
+      context: ./whatsapp-bot
+      dockerfile: Dockerfile.bot
+    container_name: poc_rag_bot
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      - BACKEND_URL=http://api:8000/api/chat
+      - TZ=America/Recife
+    volumes:
+      # Mantém a sessão do Whatsapp salva
+      - /DATA/AppData/nanbot/.wwebjs_auth:/app/.wwebjs_auth
+      # Permite o bot salvar arquivos baixados na pasta docs do host (visível também pela API)
+      - /DATA/AppData/nanbot/docs:/app/docs

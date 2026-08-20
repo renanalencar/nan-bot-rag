@@ -14,7 +14,7 @@ llm = get_provider()
 
 def enviar_mensagem_whatsapp(numero_destino: str, texto_resposta: str):
     """Função auxiliar para enviar a resposta final via Meta Cloud API"""
-    url = f"https://facebook.com{os.getenv('WHATSAPP_PHONE_NUMBER_ID')}/messages"
+    url = f"https://graph.facebook.com/v26.0/{os.getenv('WHATSAPP_PHONE_NUMBER_ID')}/messages"
     headers = {
         "Authorization": f"Bearer {os.getenv('WHATSAPP_TOKEN')}",
         "Content-Type": "application/json"
@@ -162,3 +162,8 @@ async def receber_mensagem_slack(request: Request):
             enviar_mensagem_slack(channel_id, resposta_ia)
             
     return {"status": "sucesso"}
+
+if __name__ == "__main__":
+    import uvicorn
+    # Executa o servidor na porta 8000 (sem reload para evitar problemas de importação do uvicorn)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
