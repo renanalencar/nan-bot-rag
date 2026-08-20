@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   api:
+    image: quay.io/renan_costaalencar/nan_rag_api:latest
     build:
       context: .
       dockerfile: Dockerfile.api
@@ -20,6 +21,7 @@ services:
           - homelab-interna
           
   bot:
+    image: quay.io/renan_costaalencar/nan_rag_bot:latest
     build:
       context: ./whatsapp-bot
       dockerfile: Dockerfile.bot
