@@ -3,9 +3,11 @@ const qrcode = require('qrcode-terminal');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
-// Lê configurações do ambiente (Docker) ou usa fallback local (Windows)
-const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
+// Lê configurações do ambiente (Docker) ou usa fallback local (Windows/Linux)
+const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || 
+    (os.platform() === 'win32' ? 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe' : '/usr/bin/google-chrome-stable');
 const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:8000/api/chat';
 
 // Map para armazenar os chats pausados e seus respectivos timeouts

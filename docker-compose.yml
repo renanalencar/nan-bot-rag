@@ -16,7 +16,7 @@ services:
       - /DATA/AppData/nanbot/.env:/app/.env
     environment:
       - TZ=America/Recife
-      - PYTHONPATH=/app
+      - PYTHONPATH=/app:/app/src
     networks:
           - homelab-interna
           
