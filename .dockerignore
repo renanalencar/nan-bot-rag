@@ -1,0 +1,17 @@
+.git/
+.vscode/
+.idea/
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+
+# Pastas de dados que serão montadas como volume
+data/
+docs/
+
+# Bot
+whatsapp-bot/node_modules/
+whatsapp-bot/.wwebjs_auth/
+whatsapp-bot/.wwebjs_cache/
