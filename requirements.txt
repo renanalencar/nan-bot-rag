@@ -1,3 +1,8 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# Forçar instalação do PyTorch versão CPU para economizar ~3GB de disco
+torch
+
 # Extração de PDF
 pymupdf
 
