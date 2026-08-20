@@ -16,7 +16,9 @@ services:
     environment:
       - TZ=America/Recife
       - PYTHONPATH=/app
-
+    networks:
+          - homelab-interna
+          
   bot:
     build:
       context: ./whatsapp-bot
@@ -33,3 +35,10 @@ services:
       - /DATA/AppData/nanbot/.wwebjs_auth:/app/.wwebjs_auth
       # Permite o bot salvar arquivos baixados na pasta docs do host (visível também pela API)
       - /DATA/AppData/nanbot/docs:/app/docs
+    networks:
+          - homelab-interna
+
+networks:
+  homelab-interna:
+    external: true
+    name: homelab-interna

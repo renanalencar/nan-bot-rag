@@ -1,6 +1,6 @@
-# POC RAG — Sistemas com IA
+# NaN Bot RAG - Bot de Atendimento via WhatsApp com RAG Local
 
-POC de um pipeline de **Retrieval-Augmented Generation (RAG)** local: você coloca PDFs em `docs/`, o pipeline extrai o texto, indexa por similaridade semântica e responde perguntas citando a fonte (arquivo + página).
+Pipeline de **Retrieval-Augmented Generation (RAG)** local: você coloca PDFs em `docs/`, o pipeline extrai o texto, indexa por similaridade semântica e responde perguntas citando a fonte (arquivo + página).
 
 Projeto pensado para a turma estudar e estender — a extração de PDF e o provider de LLM são pontos de plugue deliberados, documentados abaixo.
 
