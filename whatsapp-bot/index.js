@@ -14,27 +14,27 @@ const puppeteerOptions = {
 };
 
 // Cleanup Chromium lock files before starting to prevent "profile in use" error
-const sessionDir = path.join(__dirname, '.wwebjs_auth', 'session');
-const defaultDir = path.join(sessionDir, 'Default');
+const authDir = path.join(__dirname, '.wwebjs_auth');
 
-const dirsToCheck = [sessionDir, defaultDir];
-const lockFiles = ['SingletonLock', 'SingletonCookie', 'SingletonSocket'];
-
-for (const dir of dirsToCheck) {
-    if (fs.existsSync(dir)) {
-        for (const file of lockFiles) {
-            const lockPath = path.join(dir, file);
+const cleanLockFiles = (dir) => {
+    if (!fs.existsSync(dir)) return;
+    const items = fs.readdirSync(dir);
+    for (const item of items) {
+        const fullPath = path.join(dir, item);
+        if (fs.statSync(fullPath).isDirectory()) {
+            cleanLockFiles(fullPath);
+        } else if (item.startsWith('Singleton')) {
             try {
-                if (fs.existsSync(lockPath)) {
-                    fs.unlinkSync(lockPath);
-                    console.log(`[INIT] Removed stale lock file: ${lockPath}`);
-                }
+                fs.unlinkSync(fullPath);
+                console.log(`[INIT] Removed stale lock file: ${fullPath}`);
             } catch (e) {
-                console.error(`[INIT] Failed to remove lock file ${lockPath}:`, e.message);
+                console.error(`[INIT] Failed to remove lock file ${fullPath}:`, e.message);
             }
         }
     }
-}
+};
+
+cleanLockFiles(authDir);
 
 // Configure the client with LocalAuth to save session state so you don't have to scan QR every time
 const client = new Client({
