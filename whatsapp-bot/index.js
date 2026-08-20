@@ -3,22 +3,20 @@ const qrcode = require('qrcode-terminal');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
-
-// Usa a variável de ambiente (já definida pela imagem do Puppeteer) ou o caminho padrão do Chrome no Linux
-const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome-stable';
 const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:8000/api/chat';
 
 // Map para armazenar os chats pausados e seus respectivos timeouts
 const pausedChats = new Map();
 
+const puppeteerOptions = {
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium'
+};
+
 // Configure the client with LocalAuth to save session state so you don't have to scan QR every time
 const client = new Client({
     authStrategy: new LocalAuth(),
-    puppeteer: {
-        executablePath: executablePath,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-    }
+    puppeteer: puppeteerOptions
 });
 
 // Generate and display the QR code

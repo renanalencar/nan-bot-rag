@@ -1,18 +1,20 @@
-# Usamos a imagem oficial do Puppeteer que já contém Chrome e dependências
-FROM ghcr.io/puppeteer/puppeteer:latest
+FROM node:20-bullseye-slim
 
-# O usuário default na imagem do puppeteer é 'pptruser'
-# Vamos usar root para garantir permissões nas pastas compartilhadas (docs, .wwebjs_auth)
-USER root
+# Instala Chromium nativo
+RUN apt-get update && apt-get install -y \
+    chromium \
+    --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-# Copia package.json
+# Variáveis para o Puppeteer usar o Chromium do sistema
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
 COPY package*.json ./
 RUN npm install
 
-# Copia código
 COPY index.js .
 
-# A imagem oficial já define PUPPETEER_EXECUTABLE_PATH automaticamente para o Google Chrome.
-# O ENTRYPOINT da imagem oficial pode interferir, então usamos um start simples:
 CMD ["node", "index.js"]
