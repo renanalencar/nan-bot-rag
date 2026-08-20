@@ -15,17 +15,23 @@ const puppeteerOptions = {
 
 // Cleanup Chromium lock files before starting to prevent "profile in use" error
 const sessionDir = path.join(__dirname, '.wwebjs_auth', 'session');
-if (fs.existsSync(sessionDir)) {
-    const lockFiles = ['SingletonLock', 'SingletonCookie', 'SingletonSocket'];
-    for (const file of lockFiles) {
-        const lockPath = path.join(sessionDir, file);
-        try {
-            if (fs.existsSync(lockPath)) {
-                fs.unlinkSync(lockPath);
-                console.log(`[INIT] Removed stale lock file: ${lockPath}`);
+const defaultDir = path.join(sessionDir, 'Default');
+
+const dirsToCheck = [sessionDir, defaultDir];
+const lockFiles = ['SingletonLock', 'SingletonCookie', 'SingletonSocket'];
+
+for (const dir of dirsToCheck) {
+    if (fs.existsSync(dir)) {
+        for (const file of lockFiles) {
+            const lockPath = path.join(dir, file);
+            try {
+                if (fs.existsSync(lockPath)) {
+                    fs.unlinkSync(lockPath);
+                    console.log(`[INIT] Removed stale lock file: ${lockPath}`);
+                }
+            } catch (e) {
+                console.error(`[INIT] Failed to remove lock file ${lockPath}:`, e.message);
             }
-        } catch (e) {
-            console.error(`[INIT] Failed to remove lock file ${lockPath}:`, e.message);
         }
     }
 }
