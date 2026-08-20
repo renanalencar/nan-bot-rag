@@ -21,15 +21,19 @@ const cleanLockFiles = (dir) => {
     const items = fs.readdirSync(dir);
     for (const item of items) {
         const fullPath = path.join(dir, item);
-        if (fs.statSync(fullPath).isDirectory()) {
-            cleanLockFiles(fullPath);
-        } else if (item.startsWith('Singleton')) {
-            try {
-                fs.unlinkSync(fullPath);
-                console.log(`[INIT] Removed stale lock file: ${fullPath}`);
-            } catch (e) {
-                console.error(`[INIT] Failed to remove lock file ${fullPath}:`, e.message);
+        try {
+            if (fs.lstatSync(fullPath).isDirectory()) {
+                cleanLockFiles(fullPath);
+            } else if (item.startsWith('Singleton')) {
+                try {
+                    fs.unlinkSync(fullPath);
+                    console.log(`[INIT] Removed stale lock file: ${fullPath}`);
+                } catch (e) {
+                    console.error(`[INIT] Failed to remove lock file ${fullPath}:`, e.message);
+                }
             }
+        } catch (err) {
+            // Ignorar erros caso o arquivo tenha sido removido após o readdirSync ou seja um symlink quebrado
         }
     }
 };
